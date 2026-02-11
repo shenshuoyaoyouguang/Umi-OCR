@@ -34,6 +34,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Download PyStand
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo "下载 PyStand 运行时..."
           .\scripts\download_pystand.ps1
