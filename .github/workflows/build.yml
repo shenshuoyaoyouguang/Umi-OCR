@@ -59,7 +59,7 @@ jobs:
           if ("${{ github.event_name }}" -eq "push" -and "${{ github.ref }}" -match "refs/tags/v(.*)") {
             $version = $matches[1]
           } else {
-            $version = "dev-${{ github.sha.SubString(0,7) }}"
+            $version = "dev-${{ github.sha }}"
           }
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
