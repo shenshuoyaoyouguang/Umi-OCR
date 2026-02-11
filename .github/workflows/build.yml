@@ -37,8 +37,8 @@ jobs:
         run: |
           echo "下载 PyStand..."
           mkdir pystand
-          # 下载预编译的 PyStand (从 Releases 页面)
-          Invoke-WebRequest -Uri "https://github.com/skywind3000/PyStand/releases/download/v4.2/pystand-v4.2-win-x64.zip" -OutFile "pystand.zip"
+          # 下载预编译的 PyStand
+          Invoke-WebRequest -Uri "https://github.com/skywind3000/PyStand/releases/download/1.1.5/PyStand-v1.1.5-exe.zip" -OutFile "pystand.zip"
           Expand-Archive -Path "pystand.zip" -DestinationPath "pystand" -Force
           Get-ChildItem -Path "pystand" -Recurse
 

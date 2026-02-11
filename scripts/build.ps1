@@ -26,21 +26,14 @@ if (-not (Test-Path $SourcePath)) {
     exit 1
 }
 
-# 查找 PyStand（从 pip 安装的位置）
-Write-Host "`n查找 PyStand..." -ForegroundColor Cyan
-try {
-    # 使用 pystand 命令
-    $PyStandLocation = python -c "import pystand; import os; print(os.path.dirname(pystand.__file__))" 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "PyStand 已安装: $PyStandLocation" -ForegroundColor Green
-    } else {
-        Write-Host "错误: PyStand 未正确安装" -ForegroundColor Red
-        exit 1
-    }
-} catch {
-    Write-Host "错误: 无法找到 PyStand" -ForegroundColor Red
+# 检查 PyStand 目录
+Write-Host "`n检查 PyStand..." -ForegroundColor Cyan
+$PyStandDir = ".\pystand"
+if (-not (Test-Path $PyStandDir)) {
+    Write-Host "错误: PyStand 目录不存在: $PyStandDir" -ForegroundColor Red
     exit 1
 }
+Write-Host "PyStand 目录: $PyStandDir" -ForegroundColor Green
 
 # 创建输出目录
 if (Test-Path $OutputPath) {
