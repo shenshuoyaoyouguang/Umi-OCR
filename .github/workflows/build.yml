@@ -10,6 +10,15 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: '强制构建'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - true
+          - false
 
 jobs:
   build:
@@ -17,7 +26,7 @@ jobs:
     if: |
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch')
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.force_build == 'true')
 
     steps:
       - name: Checkout code

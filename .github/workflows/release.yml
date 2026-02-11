@@ -19,7 +19,6 @@ jobs:
   release:
     runs-on: windows-latest
     if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
       (github.event_name == 'workflow_dispatch')
 
@@ -34,11 +33,6 @@ jobs:
             $version = $matches[1]
           } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $version = "${{ github.event.inputs.tag }}"
-          } else {
-            $version = "${{ github.event.workflow_run.head_branch }}"
-            if ($version -eq "main") {
-              $version = "dev-${{ github.sha.SubString(0,7) }}"
-            }
           }
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
