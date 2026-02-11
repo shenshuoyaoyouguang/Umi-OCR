@@ -2,7 +2,7 @@
 # 下载 PyStand 运行时用于打包 Umi-OCR
 
 param(
-    [string]$Version = "v1.4.1",
+    [string]$Version = "v1.4.0",
     [string]$OutputDir = ".\pystand"
 )
 
@@ -15,22 +15,32 @@ if (-not (Test-Path $OutputDir)) {
     Write-Host "创建目录: $OutputDir" -ForegroundColor Green
 }
 
-# PyStand 下载 URL（根据实际需要调整）
-$BaseUrl = "https://github.com/anthony-tuininga/pystand/releases/download"
+# PyStand 下载 URL（使用 GitHub CLI 下载以避免 URL 问题）
 $FileName = "pystand-${Version}-windows-amd64.zip"
-$DownloadUrl = "$BaseUrl/$Version/$FileName"
 $OutputFile = Join-Path $OutputDir $FileName
 
-Write-Host "下载 URL: $DownloadUrl" -ForegroundColor Yellow
+Write-Host "下载文件: $FileName" -ForegroundColor Yellow
 
 # 检查是否已下载
 if (Test-Path $OutputFile) {
     Write-Host "文件已存在，跳过下载: $OutputFile" -ForegroundColor Green
 } else {
     try {
-        Write-Host "正在下载..." -ForegroundColor Yellow
-        Invoke-WebRequest -Uri $DownloadUrl -OutFile $OutputFile -UseBasicParsing
-        Write-Host "下载完成: $OutputFile" -ForegroundColor Green
+        Write-Host "正在使用 GitHub CLI 下载..." -ForegroundColor Yellow
+        # 使用 gh release download 命令
+        gh release download "$Version" --repo anthony-tuininga/pystand --pattern "*windows-amd64.zip" --dir $OutputDir --clobber
+        
+        if (Test-Path $OutputFile) {
+            Write-Host "下载完成: $OutputFile" -ForegroundColor Green
+        } else {
+            # 回退到使用 URL 下载
+            Write-Host "GitHub CLI 下载失败，尝试直接下载..." -ForegroundColor Yellow
+            $BaseUrl = "https://github.com/anthony-tuininga/pystand/releases/download"
+            $DownloadUrl = "$BaseUrl/$Version/$FileName"
+            Write-Host "下载 URL: $DownloadUrl" -ForegroundColor Yellow
+            Invoke-WebRequest -Uri $DownloadUrl -OutFile $OutputFile -UseBasicParsing
+            Write-Host "下载完成: $OutputFile" -ForegroundColor Green
+        }
     } catch {
         Write-Host "下载失败: $_" -ForegroundColor Red
         Write-Host "请手动下载 PyStand 并放置在 $OutputDir 目录" -ForegroundColor Yellow
