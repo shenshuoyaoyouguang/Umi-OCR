@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pystand==4.2
+          pip install git+https://github.com/skywind3000/PyStand.git
 
       - name: Prepare dependencies
         run: |
