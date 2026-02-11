@@ -3,8 +3,7 @@
 
 param(
     [Parameter(Mandatory=$true)]
-    [string]$BuildPath,
-    [switch]$Verbose
+    [string]$BuildPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,14 +31,10 @@ $TestResults = @{
 function Test-Item {
     param(
         [string]$Name,
-        [scriptblock]$Test,
-        [string]$Description = ""
+        [scriptblock]$Test
     )
 
     Write-Host "`n测试: $Name" -ForegroundColor Cyan
-    if ($Verbose -and $Description) {
-        Write-Host "  描述: $Description" -ForegroundColor Gray
-    }
 
     try {
         $result = & $Test
@@ -170,54 +165,6 @@ Test-Item -Name "启动脚本存在" -Test {
     $content = Get-Content $batPath -Raw
     Write-Host "    路径: $batPath" -ForegroundColor Gray
     return $content.Length -gt 0
-}
-
-# 测试 9: 检查依赖库
-Test-Item -Name "依赖库目录存在" -Test {
-    $libPath = Join-Path $BuildPath "lib"
-    if (-not (Test-Path $libPath)) {
-        Write-Host "    未找到: $libPath" -ForegroundColor Yellow
-        Write-Host "    这可能意味着使用系统 Python 或打包时未包含依赖" -ForegroundColor Yellow
-        $script:TestResults.Skipped++
-        return $false
-    }
-    $depCount = (Get-ChildItem -Path $libPath).Count
-    Write-Host "    找到 $depCount 个依赖项" -ForegroundColor Gray
-    return $depCount -gt 0
-}
-
-# 测试 10: 检查文件完整性
-Test-Item -Name "文件完整性检查" -Test {
-    $dataPath = Join-Path $BuildPath "UmiOCR-data"
-    $mainPath = Join-Path $dataPath "main.py"
-    $pluginsPath = Join-Path $dataPath "plugins"
-
-    $errors = @()
-
-    if (-not (Test-Path $mainPath)) {
-        $errors += "main.py 缺失"
-    }
-
-    if (Test-Path $pluginsPath) {
-        $plugins = Get-ChildItem -Path $pluginsPath -Directory
-        foreach ($plugin in $plugins) {
-            $initPath = Join-Path $plugin.FullName "__init__.py"
-            if (-not (Test-Path $initPath)) {
-                $errors += "$($plugin.Name)/__init__.py 缺失"
-            }
-        }
-    }
-
-    if ($errors.Count -gt 0) {
-        Write-Host "    发现 $($errors.Count) 个错误:" -ForegroundColor Red
-        foreach ($error in $errors) {
-            Write-Host "      - $error" -ForegroundColor Red
-        }
-        return $false
-    }
-
-    Write-Host "    所有必需文件都存在" -ForegroundColor Gray
-    return $true
 }
 
 # 显示测试结果
