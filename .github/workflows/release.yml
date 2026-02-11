@@ -39,8 +39,9 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: umi-ocr-build-${{ steps.version.outputs.version }}
+          pattern: umi-ocr-build-*
           path: artifacts
+          merge-multiple: false
 
       - name: Create release notes
         id: release_notes
