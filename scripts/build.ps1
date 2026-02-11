@@ -45,6 +45,7 @@ New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
 # 复制源代码
 Write-Host "`n步骤 1: 复制源代码..." -ForegroundColor Cyan
 $UmiDataPath = Join-Path $OutputPath "UmiOCR-data"
+New-Item -ItemType Directory -Path $UmiDataPath -Force | Out-Null
 Copy-Item -Path "$SourcePath\*" -Destination $UmiDataPath -Recurse -Force
 Write-Host "源代码已复制到: $UmiDataPath" -ForegroundColor Green
 
