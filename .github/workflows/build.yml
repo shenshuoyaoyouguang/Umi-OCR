@@ -1,0 +1,95 @@
+name: Build
+
+on:
+  workflow_run:
+    workflows: ["CI Test"]
+    types:
+      - completed
+    branches: [ "main" ]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download PyStand
+        run: |
+          echo "下载 PyStand 运行时..."
+          .\scripts\download_pystand.ps1
+
+      - name: Prepare dependencies
+        run: |
+          echo "准备构建依赖..."
+          .\scripts\prepare_deps.ps1
+
+      - name: Build with PyStand
+        run: |
+          echo "开始构建..."
+          .\scripts\build.ps1 -SourcePath "UmiOCR-data" -OutputPath "dist"
+
+      - name: Test build
+        run: |
+          echo "测试构建产物..."
+          .\scripts\test_build.ps1 -BuildPath "dist"
+
+      - name: Get version
+        id: version
+        run: |
+          if ("${{ github.event_name }}" -eq "push" -and "${{ github.ref }}" -match "refs/tags/v(.*)") {
+            $version = $matches[1]
+          } else {
+            $version = "dev-${{ github.sha.SubString(0,7) }}"
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Package artifacts
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $outputFile = "Umi-OCR_Rapid_$version.7z"
+          if (Test-Path "dist") {
+            Compress-Archive -Path "dist\*" -DestinationPath $outputFile
+            Write-Host "打包完成: $outputFile"
+          } else {
+            Write-Host "dist 目录不存在，跳过打包"
+          }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: umi-ocr-build-${{ steps.version.outputs.version }}
+          path: |
+            Umi-OCR-*.7z
+            dist/
+          retention-days: 30
+
+      - name: Build summary
+        run: |
+          Write-Host "========================================"
+          Write-Host "构建完成！"
+          Write-Host "========================================"
+          Write-Host "版本: ${{ steps.version.outputs.version }}"
+          Write-Host "源仓库: ${{ github.repository }}"
+          Write-Host "SHA: ${{ github.sha }}"
+          Write-Host "========================================"

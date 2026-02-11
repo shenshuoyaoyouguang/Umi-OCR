@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: windows-latest
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if ("${{ github.event_name }}" -eq "push" -and "${{ github.ref }}" -match "refs/tags/v(.*)") {
+            $version = $matches[1]
+          } elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ github.event.inputs.tag }}"
+          } else {
+            $version = "${{ github.event.workflow_run.head_branch }}"
+            if ($version -eq "main") {
+              $version = "dev-${{ github.sha.SubString(0,7) }}"
+            }
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: umi-ocr-build-${{ steps.version.outputs.version }}
+          path: artifacts
+
+      - name: Create release notes
+        id: release_notes
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+          $notes = @"
+          ## Umi-OCR $version
+
+          ### 构建信息
+          - 版本: $version
+          - 构建时间: $timestamp
+          - 源仓库: ${{ github.repository }}
+          - SHA: ${{ github.sha }}
+
+          ### 下载说明
+          请下载 `Umi-OCR_Rapid_$version.7z` 文件并解压使用。
+
+          ### 使用方法
+          1. 解压下载的压缩包
+          2. 双击运行 `Umi-OCR.exe` 或 `启动.bat`
+          3. 首次运行可能需要一些时间加载模型
+
+          ### 系统要求
+          - Windows 10/11 (64位)
+          - Windows 7 (使用 win7_x64_PaddleOCR 插件)
+
+          ### 插件支持
+          - PaddleOCR 插件（win7_x64_PaddleOCR）
+          - RapidOCR 插件（如已配置）
+
+          ---
+          由 GitHub Actions 自动构建
+          "@
+          echo "notes=$notes" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          files: |
+            artifacts/*.7z
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, 'dev') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        run: |
+          Write-Host "========================================"
+          Write-Host "发布完成！"
+          Write-Host "========================================"
+          Write-Host "版本: ${{ steps.version.outputs.version }}"
+          Write-Host "发布链接: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}"
+          Write-Host "========================================"
