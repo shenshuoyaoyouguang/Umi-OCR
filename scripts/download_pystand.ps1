@@ -2,7 +2,7 @@
 # 下载 PyStand 运行时用于打包 Umi-OCR
 
 param(
-    [string]$Version = "v1.4.0",
+    [string]$Version = "v4.2",
     [string]$OutputDir = ".\pystand"
 )
 
@@ -15,8 +15,8 @@ if (-not (Test-Path $OutputDir)) {
     Write-Host "创建目录: $OutputDir" -ForegroundColor Green
 }
 
-# PyStand 下载 URL（使用 GitHub CLI 下载以避免 URL 问题）
-$FileName = "pystand-${Version}-windows-amd64.zip"
+# PyStand 下载 URL（正确的仓库是 skywind3000/PyStand）
+$FileName = "pystand-${Version}-windows-x64.zip"
 $OutputFile = Join-Path $OutputDir $FileName
 
 Write-Host "下载文件: $FileName" -ForegroundColor Yellow
@@ -28,14 +28,14 @@ if (Test-Path $OutputFile) {
     try {
         Write-Host "正在使用 GitHub CLI 下载..." -ForegroundColor Yellow
         # 使用 gh release download 命令
-        gh release download "$Version" --repo anthony-tuininga/pystand --pattern "*windows-amd64.zip" --dir $OutputDir --clobber
+        gh release download "$Version" --repo skywind3000/PyStand --pattern "*windows-x64.zip" --dir $OutputDir --clobber
         
         if (Test-Path $OutputFile) {
             Write-Host "下载完成: $OutputFile" -ForegroundColor Green
         } else {
             # 回退到使用 URL 下载
             Write-Host "GitHub CLI 下载失败，尝试直接下载..." -ForegroundColor Yellow
-            $BaseUrl = "https://github.com/anthony-tuininga/pystand/releases/download"
+            $BaseUrl = "https://github.com/skywind3000/PyStand/releases/download"
             $DownloadUrl = "$BaseUrl/$Version/$FileName"
             Write-Host "下载 URL: $DownloadUrl" -ForegroundColor Yellow
             Invoke-WebRequest -Uri $DownloadUrl -OutFile $OutputFile -UseBasicParsing
