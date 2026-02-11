@@ -1,5 +1,5 @@
 # build.ps1
-# 使用 PyStand 打包 Umi-OCR
+# 简化版 Umi-OCR 构建脚本
 
 param(
     [Parameter(Mandatory=$true)]
@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Umi-OCR 构建脚本" -ForegroundColor Cyan
+Write-Host "Umi-OCR 简化构建脚本" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "源代码路径: $SourcePath" -ForegroundColor Yellow
 Write-Host "输出路径: $OutputPath" -ForegroundColor Yellow
@@ -49,54 +49,17 @@ New-Item -ItemType Directory -Path $UmiDataPath -Force | Out-Null
 Copy-Item -Path "$SourcePath\*" -Destination $UmiDataPath -Recurse -Force
 Write-Host "源代码已复制到: $UmiDataPath" -ForegroundColor Green
 
-# 复制 PyStand 运行时
+# 复制 PyStand
 Write-Host "`n步骤 2: 复制 PyStand 运行时..." -ForegroundColor Cyan
-Copy-Item -Path "$PyStandLocation\*" -Destination $OutputPath -Recurse -Force
-
-# 重命名 PyStand 可执行文件
-$PyStandExe = Get-ChildItem -Path $OutputPath -Filter "pystand*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($PyStandExe) {
-    $NewExe = Join-Path $OutputPath "$AppName.exe"
-    if (Test-Path $NewExe) {
-        Remove-Item -Path $NewExe -Force
-    }
-    Move-Item -Path $PyStandExe.FullName -Destination $NewExe -Force
-    Write-Host "可执行文件已重命名: $NewExe" -ForegroundColor Green
-}
-
-# 创建配置文件
-Write-Host "`n步骤 3: 创建配置文件..." -ForegroundColor Cyan
-$ConfigContent = @"
-{
-    "version": "$Version",
-    "app_name": "$AppName",
-    "entry_point": "main.py",
-    "python_version": "3.12",
-    "platform": "windows",
-    "build_date": "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-}
-"@
-$ConfigFile = Join-Path $OutputPath "build_info.json"
-$ConfigContent | Out-File -FilePath $ConfigFile -Encoding UTF8
-Write-Host "配置文件已创建: $ConfigFile" -ForegroundColor Green
-
-# 复制插件目录
-Write-Host "`n步骤 4: 复制插件..." -ForegroundColor Cyan
-$PluginsDir = Join-Path $UmiDataPath "plugins"
-if (Test-Path $PluginsDir) {
-    $PluginCount = (Get-ChildItem -Path $PluginsDir -Directory).Count
-    Write-Host "发现 $PluginCount 个插件" -ForegroundColor Green
-    foreach ($plugin in Get-ChildItem -Path $PluginsDir -Directory) {
-        Write-Host "  - $($plugin.Name)" -ForegroundColor Gray
-    }
-}
+Copy-Item -Path "$PyStandDir\*" -Destination $OutputPath -Recurse -Force
+Write-Host "PyStand 已复制" -ForegroundColor Green
 
 # 创建启动脚本
-Write-Host "`n步骤 5: 创建启动脚本..." -ForegroundColor Cyan
+Write-Host "`n步骤 3: 创建启动脚本..." -ForegroundColor Cyan
 $BatContent = @"
 @echo off
 cd /d "%~dp0"
-$AppName.exe
+python main.py
 pause
 "@
 $BatFile = Join-Path $OutputPath "启动.bat"
@@ -104,41 +67,25 @@ $BatContent | Out-File -FilePath $BatFile -Encoding ASCII
 Write-Host "启动脚本已创建: $BatFile" -ForegroundColor Green
 
 # 创建 README
-Write-Host "`n步骤 6: 创建 README..." -ForegroundColor Cyan
+Write-Host "`n步骤 4: 创建 README..." -ForegroundColor Cyan
 $ReadmeContent = @"
 # $AppName v$Version (Windows)
 
 ## 使用说明
 
-1. 双击运行 `$AppName.exe` 或 `启动.bat`
+1. 双击运行 `启动.bat`
 2. 首次运行可能需要一些时间加载模型
-3. 支持的插件：
-
-"@
-
-$PluginsDir = Join-Path $UmiDataPath "plugins"
-if (Test-Path $PluginsDir) {
-    foreach ($plugin in Get-ChildItem -Path $PluginsDir -Directory) {
-        $ReadmeContent += "- $($plugin.Name)`n"
-    }
-}
-
-$ReadmeContent += @"
 
 ## 系统要求
 
 - Windows 10/11 (64位)
-- Windows 7 (使用 win7_x64_PaddleOCR 插件)
+- Python 3.12
 
 ## 版本信息
 
 - 版本: $Version
 - 构建日期: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 - 构建方式: PyStand
-
-## 问题反馈
-
-如有问题，请访问: https://github.com/shenshuoyaoyouguang/Umi-OCR/issues
 "@
 
 $ReadmeFile = Join-Path $OutputPath "README.txt"
@@ -151,7 +98,7 @@ Write-Host "构建完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "输出目录: $OutputPath" -ForegroundColor Yellow
 Write-Host "主要文件:" -ForegroundColor Yellow
-Write-Host "  - $AppName.exe (主程序)" -ForegroundColor Gray
+Write-Host "  - PyStand.exe (主程序)" -ForegroundColor Gray
 Write-Host "  - 启动.bat (启动脚本)" -ForegroundColor Gray
 Write-Host "  - UmiOCR-data/ (应用数据)" -ForegroundColor Gray
 Write-Host "  - README.txt (使用说明)" -ForegroundColor Gray
