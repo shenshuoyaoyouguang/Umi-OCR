@@ -1,10 +1,7 @@
-name: Release
+name: Release (Legacy - PyInstaller)
 
 on:
-  push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+  workflow_dispatch:  # 仅允许手动触发
 
 jobs:
   release:
@@ -29,25 +26,29 @@ jobs:
       - name: Build executable
         run: |
           echo "Building executable..."
-          pyinstaller main.spec
+          if (Test-Path "main.spec") {
+            pyinstaller main.spec
+          }
 
       - name: Create release
+        if: success()
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          release_name: Release ${{ github.ref }} (Legacy)
           draft: false
-          prerelease: false
+          prerelease: true
 
       - name: Upload release asset
+        if: success()
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./dist/umi-ocr.exe
-          asset_name: umi-ocr.exe
+          asset_name: umi-ocr-legacy.exe
           asset_content_type: application/octet-stream

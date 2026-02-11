@@ -11,6 +11,15 @@ jobs:
   test:
     runs-on: windows-latest
 
+    strategy:
+      matrix:
+        test-script:
+          - test_paddleocr_direct.py
+          - test_paddleocr_plugin.py
+          - test_paddleocr_plugin_simple.py
+          - test_paddleocr_raw.py
+          - test_ocr_recognition.py
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,15 +27,24 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.12'
           cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if (Test-Path "requirements.txt") {
+            pip install -r requirements.txt
+          }
+          # 安装 PaddleOCR 相关依赖
+          pip install paddlepaddle paddleocr
 
-      - name: Run tests
+      - name: Run test - ${{ matrix.test-script }}
         run: |
-          echo "Running tests..."
-          python -m pytest tests/ -v
+          echo "Running test: ${{ matrix.test-script }}"
+          python ${{ matrix.test-script }}
+
+      - name: Test report
+        if: always()
+        run: |
+          echo "测试完成"

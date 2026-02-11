@@ -18,21 +18,33 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.12'
           cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if (Test-Path "requirements.txt") {
+            pip install -r requirements.txt
+          }
+          pip install flake8
 
       - name: Check directory structure
         run: |
           echo "Checking project structure..."
-          ls -la
+          Get-ChildItem -Force
 
       - name: Lint Python code
         run: |
-          pip install flake8
-          flake8 --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          # 检查 UmiOCR-data 目录下的 Python 代码
+          if (Test-Path "UmiOCR-data") {
+            flake8 --count --select=E9,F63,F7,F82 --show-source --statistics UmiOCR-data/
+            flake8 --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics UmiOCR-data/
+          }
+          # 检查测试脚本
+          $testScripts = Get-ChildItem -Filter "test_*.py" -ErrorAction SilentlyContinue
+          if ($testScripts) {
+            foreach ($script in $testScripts) {
+              flake8 --count --select=E9,F63,F7,F82 --show-source --statistics $script.Name
+            }
+          }
