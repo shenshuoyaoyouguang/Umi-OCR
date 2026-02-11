@@ -5,7 +5,6 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$SourcePath,
     [string]$OutputPath = ".\dist",
-    [string]$PyStandDir = ".\pystand",
     [string]$AppName = "Umi-OCR",
     [string]$Version = "2.1.5"
 )
@@ -17,7 +16,6 @@ Write-Host "Umi-OCR 构建脚本" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "源代码路径: $SourcePath" -ForegroundColor Yellow
 Write-Host "输出路径: $OutputPath" -ForegroundColor Yellow
-Write-Host "PyStand 路径: $PyStandDir" -ForegroundColor Yellow
 Write-Host "应用名称: $AppName" -ForegroundColor Yellow
 Write-Host "版本: $Version" -ForegroundColor Yellow
 Write-Host "========================================" -ForegroundColor Cyan
@@ -28,21 +26,21 @@ if (-not (Test-Path $SourcePath)) {
     exit 1
 }
 
-# 检查 PyStand
-if (-not (Test-Path $PyStandDir)) {
-    Write-Host "错误: PyStand 目录不存在: $PyStandDir" -ForegroundColor Red
-    Write-Host "请先运行 download_pystand.ps1 下载 PyStand" -ForegroundColor Yellow
+# 查找 PyStand（从 pip 安装的位置）
+Write-Host "`n查找 PyStand..." -ForegroundColor Cyan
+try {
+    # 使用 pystand 命令
+    $PyStandLocation = python -c "import pystand; import os; print(os.path.dirname(pystand.__file__))" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "PyStand 已安装: $PyStandLocation" -ForegroundColor Green
+    } else {
+        Write-Host "错误: PyStand 未正确安装" -ForegroundColor Red
+        exit 1
+    }
+} catch {
+    Write-Host "错误: 无法找到 PyStand" -ForegroundColor Red
     exit 1
 }
-
-# 查找 PyStand 可执行文件
-$PyStandExe = Get-ChildItem -Path $PyStandDir -Filter "pystand*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $PyStandExe) {
-    Write-Host "错误: 未找到 PyStand 可执行文件" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host "使用 PyStand: $($PyStandExe.FullName)" -ForegroundColor Green
 
 # 创建输出目录
 if (Test-Path $OutputPath) {
@@ -57,18 +55,20 @@ $UmiDataPath = Join-Path $OutputPath "UmiOCR-data"
 Copy-Item -Path "$SourcePath\*" -Destination $UmiDataPath -Recurse -Force
 Write-Host "源代码已复制到: $UmiDataPath" -ForegroundColor Green
 
-# 复制 PyStand
+# 复制 PyStand 运行时
 Write-Host "`n步骤 2: 复制 PyStand 运行时..." -ForegroundColor Cyan
-Copy-Item -Path "$PyStandDir\*" -Destination $OutputPath -Recurse -Force
+Copy-Item -Path "$PyStandLocation\*" -Destination $OutputPath -Recurse -Force
 
 # 重命名 PyStand 可执行文件
-$OldExe = Join-Path $OutputPath $PyStandExe.Name
-$NewExe = Join-Path $OutputPath "$AppName.exe"
-if (Test-Path $NewExe) {
-    Remove-Item -Path $NewExe -Force
+$PyStandExe = Get-ChildItem -Path $OutputPath -Filter "pystand*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($PyStandExe) {
+    $NewExe = Join-Path $OutputPath "$AppName.exe"
+    if (Test-Path $NewExe) {
+        Remove-Item -Path $NewExe -Force
+    }
+    Move-Item -Path $PyStandExe.FullName -Destination $NewExe -Force
+    Write-Host "可执行文件已重命名: $NewExe" -ForegroundColor Green
 }
-Move-Item -Path $OldExe -Destination $NewExe -Force
-Write-Host "可执行文件已重命名: $NewExe" -ForegroundColor Green
 
 # 创建配置文件
 Write-Host "`n步骤 3: 创建配置文件..." -ForegroundColor Cyan
@@ -86,57 +86,8 @@ $ConfigFile = Join-Path $OutputPath "build_info.json"
 $ConfigContent | Out-File -FilePath $ConfigFile -Encoding UTF8
 Write-Host "配置文件已创建: $ConfigFile" -ForegroundColor Green
 
-# 复制依赖库
-Write-Host "`n步骤 4: 复制依赖库..." -ForegroundColor Cyan
-$VenvSitePackages = Join-Path (Get-Location) "venv\Lib\site-packages"
-if (Test-Path $VenvSitePackages) {
-    Write-Host "从虚拟环境复制依赖..." -ForegroundColor Yellow
-
-    # 创建依赖目录
-    $LibPath = Join-Path $OutputPath "lib"
-    New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
-
-    # 复制关键依赖
-    $CriticalDeps = @(
-        "PyQt6",
-        "PySide6",
-        "numpy",
-        "opencv",
-        "onnxruntime",
-        "rapidocr",
-        "paddleocr"
-    )
-
-    foreach ($dep in $CriticalDeps) {
-        $DepPath = Join-Path $VenvSitePackages $dep
-        if (Test-Path $DepPath) {
-            Copy-Item -Path $DepPath -Destination $LibPath -Recurse -Force
-            Write-Host "  ✓ $dep" -ForegroundColor Green
-        } else {
-            Write-Host "  ✗ $dep 未找到" -ForegroundColor Yellow
-        }
-    }
-
-    # 复制其他 .py 文件
-    $PyFiles = Get-ChildItem -Path $VenvSitePackages -Filter "*.py" -File
-    foreach ($file in $PyFiles) {
-        Copy-Item -Path $file.FullName -Destination $LibPath -Force
-    }
-}
-
-# 复制模型文件
-Write-Host "`n步骤 5: 复制模型文件..." -ForegroundColor Cyan
-$ModelsDir = ".\models"
-if (Test-Path $ModelsDir) {
-    $TargetModelsDir = Join-Path $UmiDataPath "models"
-    Copy-Item -Path "$ModelsDir\*" -Destination $TargetModelsDir -Recurse -Force
-    Write-Host "模型文件已复制" -ForegroundColor Green
-} else {
-    Write-Host "未找到模型目录，跳过" -ForegroundColor Yellow
-}
-
 # 复制插件目录
-Write-Host "`n步骤 6: 复制插件..." -ForegroundColor Cyan
+Write-Host "`n步骤 4: 复制插件..." -ForegroundColor Cyan
 $PluginsDir = Join-Path $UmiDataPath "plugins"
 if (Test-Path $PluginsDir) {
     $PluginCount = (Get-ChildItem -Path $PluginsDir -Directory).Count
@@ -147,7 +98,7 @@ if (Test-Path $PluginsDir) {
 }
 
 # 创建启动脚本
-Write-Host "`n步骤 7: 创建启动脚本..." -ForegroundColor Cyan
+Write-Host "`n步骤 5: 创建启动脚本..." -ForegroundColor Cyan
 $BatContent = @"
 @echo off
 cd /d "%~dp0"
@@ -159,7 +110,7 @@ $BatContent | Out-File -FilePath $BatFile -Encoding ASCII
 Write-Host "启动脚本已创建: $BatFile" -ForegroundColor Green
 
 # 创建 README
-Write-Host "`n步骤 8: 创建 README..." -ForegroundColor Cyan
+Write-Host "`n步骤 6: 创建 README..." -ForegroundColor Cyan
 $ReadmeContent = @"
 # $AppName v$Version (Windows)
 

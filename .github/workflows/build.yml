@@ -32,13 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Download PyStand
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "下载 PyStand 运行时..."
-          .\scripts\download_pystand.ps1
+          pip install pystand==4.2
 
       - name: Prepare dependencies
         run: |
