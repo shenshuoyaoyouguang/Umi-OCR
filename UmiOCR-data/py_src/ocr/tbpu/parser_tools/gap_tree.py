@@ -3,27 +3,47 @@
 # Author: hiroi-sora
 # https://github.com/hiroi-sora/GapTree_Sort_Algorithm
 
-from typing import Callable
+from __future__ import annotations
+from typing import TYPE_CHECKING, Callable, List, Tuple, Dict, Any, Optional
+
+if TYPE_CHECKING:
+    from ..tbpu_types import TextBlocks, TextBlock, NormalizedBox, GapTreeNode, GapTreeUnit
 
 
 class GapTree:
-    def __init__(self, get_bbox: Callable):
+    """
+    间隙树排序算法类
+    
+    对文本块列表按照人类阅读顺序进行排序。
+    支持多栏、图文混排等复杂版面的分析。
+    """
+    
+    def __init__(self, get_bbox: Callable[[TextBlock], NormalizedBox]) -> None:
         """
-        :param get_bbox: 函数，传入单个文本块，
-                        返回该文本块左上角、右下角的坐标元组 (x0, y0, x1, y1)
+        初始化间隙树对象
+        
+        Args:
+            get_bbox: 函数，传入单个文本块，
+                     返回该文本块左上角、右下角的坐标元组 (x0, y0, x1, y1)
         """
-        self.get_bbox = get_bbox
+        self.get_bbox: Callable[[TextBlock], NormalizedBox] = get_bbox
+        # 中间变量缓存（用于调试）
+        self.current_rows: Optional[List[List[GapTreeUnit]]] = None
+        self.current_cuts: Optional[List[Tuple[float, float, int, int]]] = None
+        self.current_nodes: Optional[List[GapTreeNode]] = None
 
     # ======================= 调用接口 =====================
-    # 对文本块列表排序
-    def sort(self, text_blocks: list):
+    
+    def sort(self, text_blocks: TextBlocks) -> TextBlocks:
         """
         对文本块列表，按人类阅读顺序进行排序。
 
-        :param text_blocks: 文本块对象列表
-        :return: 排序后的文本块列表
+        Args:
+            text_blocks: 文本块对象列表
+            
+        Returns:
+            排序后的文本块列表
         """
-
         # 封装块单元，并求页面左右边缘
         units, page_l, page_r = self._get_units(text_blocks, self.get_bbox)
         # 求行和竖切线
@@ -42,28 +62,43 @@ class GapTree:
 
         return new_text_blocks
 
-    # 获取以区块为单位的文本块二层列表
-    def get_nodes_text_blocks(self):
+    def get_nodes_text_blocks(self) -> List[TextBlocks]:
         """
         获取以区块为单位的文本块二层列表。需要在 sort 后调用。
 
-        :return: [ [区块1的text_blocks], [区块2的text_blocks]... ]
+        Returns:
+            [ [区块1的text_blocks], [区块2的text_blocks]... ]
         """
-        result = []
-        for node in self.current_nodes:
-            tbs = []
-            if node["units"]:
-                for unit in node["units"]:
-                    tbs.append(unit[1])
-                result.append(tbs)
+        result: List[TextBlocks] = []
+        if self.current_nodes:
+            for node in self.current_nodes:
+                tbs: TextBlocks = []
+                if node.get("units"):
+                    for unit in node["units"]:
+                        tbs.append(unit[1])
+                    result.append(tbs)
         return result
 
     # ======================= 封装块单元列表 =====================
-    # 将原始文本块，封装为 ( (x0,y0,x2,y2), 原始 ) 。并检查页边界。
-    def _get_units(self, text_blocks, get_bbox):
+    
+    def _get_units(
+        self, 
+        text_blocks: TextBlocks, 
+        get_bbox: Callable[[TextBlock], NormalizedBox]
+    ) -> Tuple[List[GapTreeUnit], float, float]:
+        """
+        将原始文本块，封装为 ( (x0,y0,x2,y2), 原始 ) 。并检查页边界。
+        
+        Args:
+            text_blocks: 文本块列表
+            get_bbox: 获取包围盒的函数
+            
+        Returns:
+            (封装单元列表, 页面左边缘, 页面右边缘)
+        """
         # 封装单元列表 units [ ( (x0,y0,x2,y2), 原始文本块 ), ... ]
-        units = []
-        page_l, page_r = float("inf"), -1  # 记录文本块的左右最值，作为页边界
+        units: List[GapTreeUnit] = []
+        page_l, page_r = float("inf"), -1.0  # 记录文本块的左右最值，作为页边界
         for tb in text_blocks:
             x0, y0, x2, y2 = get_bbox(tb)
             units.append(((x0, y0, x2, y2), tb))
@@ -85,12 +120,31 @@ class GapTree:
       页面上的行 rows=[ [unit...] ] 。从上到下，从左到右排序
     """
 
-    def _get_cuts_rows(self, units, page_l, page_r):
+    def _get_cuts_rows(
+        self, 
+        units: List[GapTreeUnit], 
+        page_l: float, 
+        page_r: float
+    ) -> Tuple[List[Tuple[float, float, int, int]], List[List[GapTreeUnit]]]:
+        """
+        获取竖切线和行
+        
+        Args:
+            units: 文本块单元列表
+            page_l: 页面左边缘
+            page_r: 页面右边缘
+            
+        Returns:
+            (竖切线列表, 行列表)
+        """
         # 使用间隙组 gaps2 更新 gaps1 。返回： 更新后的gaps1 , gaps1中被移除的间隙
-        def update_gaps(gaps1, gaps2):
+        def update_gaps(
+            gaps1: List[Tuple[float, float, int]], 
+            gaps2: List[Tuple[float, float, int]]
+        ) -> Tuple[List[Tuple[float, float, int]], List[Tuple[float, float, int]]]:
             flags1 = [True for _ in gaps1]  # gaps1[i] 是否彻底移除
             flags2 = [True for _ in gaps2]  # gaps2[i] 是否新加入
-            new_gaps1 = []
+            new_gaps1: List[Tuple[float, float, int]] = []
             for i1, g1 in enumerate(gaps1):
                 l1, r1, _ = g1
                 for i2, g2 in enumerate(gaps2):  # 对每一个gap1，考察所有gap2
@@ -109,7 +163,7 @@ class GapTree:
                 if f2:
                     new_gaps1.append(gaps2[i2])
             # 记录 gaps1 彻底移除的项
-            del_gaps1 = []
+            del_gaps1: List[Tuple[float, float, int]] = []
             for i1, f1 in enumerate(flags1):
                 if f1:
                     del_gaps1.append(gaps1[i1])
@@ -120,13 +174,13 @@ class GapTree:
 
         page_l -= 1  # 保证页面左右边缘不与文本块重叠
         page_r += 1
-        # 存放所有行。“row”指同一水平线上的单元块（可能属于多列）。 [ [unit...] ]
-        rows = []
+        # 存放所有行。"row"指同一水平线上的单元块（可能属于多列）。 [ [unit...] ]
+        rows: List[List[GapTreeUnit]] = []
         # 已生成完毕的竖切线。[ ( 左边缘x, 右边缘x , 起始行号, 结束行号 ) ]
-        completed_cuts = []
+        completed_cuts: List[Tuple[float, float, int, int]] = []
         # 考察中的间隙。 [ (左边缘x, 右边缘x , 开始行号) ]
-        gaps = []
-        row_index = 0  #  当前行号
+        gaps: List[Tuple[float, float, int]] = []
+        row_index = 0  # 当前行号
         unit_index = 0  # 当前块号
         # 从上到下遍历所有文本行
         l_units = len(units)
@@ -134,7 +188,7 @@ class GapTree:
             # ========== 查找当前行 row ==========
             unit = units[unit_index]  # 当前行最顶部的块
             u_bottom = unit[0][3]
-            row = [unit]  # 当前行
+            row: List[GapTreeUnit] = [unit]  # 当前行
             # 查找当前行的剩余块
             for i in range(unit_index + 1, len(units)):
                 next_u = units[i]
@@ -145,7 +199,7 @@ class GapTree:
                 unit_index = i  # 步进 已遍历的块序号
             # ========== 查找当前行的间隙 row_gaps ==========
             row.sort(key=lambda x: (x[0][0], x[0][2]))  # 当前行中的块 从左到右排序
-            row_gaps = []  # 当前行的间隙 [ ( ( 左边缘l, 右边缘r ), 开始行号) ]
+            row_gaps: List[Tuple[float, float, int]] = []  # 当前行的间隙 [ ( ( 左边缘l, 右边缘r ), 开始行号) ]
             search_start = page_l  # 本轮搜索的线段起始点为页面左边缘
             for u in row:  # 遍历当前行的块
                 l = u[0][0]  # 块左侧
@@ -188,15 +242,29 @@ class GapTree:
     }
     """
 
-    def _get_layout_tree(self, cuts, rows):
-        # 竖切线，将一个横行切开，断开的区域为“间隙”。
+    def _get_layout_tree(
+        self, 
+        cuts: List[Tuple[float, float, int, int]], 
+        rows: List[List[GapTreeUnit]]
+    ) -> GapTreeNode:
+        """
+        构建布局树
+        
+        Args:
+            cuts: 竖切线列表
+            rows: 行列表
+            
+        Returns:
+            布局树根节点
+        """
+        # 竖切线，将一个横行切开，断开的区域为"间隙"。
         # 生成每一行对应的间隙 (左侧,右侧) 坐标列表
-        rows_gaps = [[] for _ in rows]
+        rows_gaps: List[List[Tuple[float, float]]] = [[] for _ in rows]
         for g_i, cut in enumerate(cuts):
             for r_i in range(cut[2], cut[3] + 1):
                 rows_gaps[r_i].append((cut[0], cut[1]))
 
-        root = {  # 根节点
+        root: GapTreeNode = {  # 根节点
             "x_left": cuts[0][0] - 1,
             "x_right": cuts[-1][1] + 1,
             "r_top": -1,
@@ -204,13 +272,13 @@ class GapTree:
             "units": [],
             "children": [],
         }
-        completed_nodes = [root]  # 已经完成结束的节点
-        now_nodes = []  # 当前正在考虑的节点。无顺序
+        completed_nodes: List[GapTreeNode] = [root]  # 已经完成结束的节点
+        now_nodes: List[GapTreeNode] = []  # 当前正在考虑的节点。无顺序
 
         # ========== 结束一个节点，加入节点树 ==========
-        def complete(node):
+        def complete(node: GapTreeNode) -> None:
             node_r = node["x_right"] - 2  # 当前节点右边界
-            max_nodes = []  # 符合父节点条件的，最低的完成节点列表
+            max_nodes: List[GapTreeNode] = []  # 符合父节点条件的，最低的完成节点列表
             max_r = -2  # 符合父节点条件的最低行数
             # 在完成列表中，寻找父节点
             for com_node in completed_nodes:
@@ -240,7 +308,7 @@ class GapTree:
             u_i = g_i = 0  # 当前考察的 文本块、间隙下标
 
             # ========== 检查是否有正在考虑的节点 可以结束 ==========
-            new_nodes = []
+            new_nodes: List[GapTreeNode] = []
             for node in now_nodes:  # 遍历节点
                 l_flag = r_flag = False  # 标记节点左右边缘是否延续
                 completed_flag = False  # 标记节点是否可以结束
@@ -309,22 +377,42 @@ class GapTree:
         return root
 
     # ======================= 前序遍历布局树，求节点序列 =====================
-    def _preorder_traversal(self, root):
+    
+    def _preorder_traversal(self, root: GapTreeNode) -> List[GapTreeNode]:
+        """
+        前序遍历布局树
+        
+        Args:
+            root: 布局树根节点
+            
+        Returns:
+            节点序列
+        """
         if not root:
             return []
-        stack = [root]
-        result = []
+        stack: List[GapTreeNode] = [root]
+        result: List[GapTreeNode] = []
         while stack:
             node = stack.pop()
             result.append(node)
             # 将当前节点的子节点逆序压入栈中，以保证左子节点先于右子节点处理
-            stack += reversed(node["children"])
+            stack += reversed(node.get("children", []))
         return result
 
     # ======================= 从节点序列中，提取原始文本块序列 =====================
-    def _get_text_blocks(self, nodes):
-        result = []
+    
+    def _get_text_blocks(self, nodes: List[GapTreeNode]) -> TextBlocks:
+        """
+        从节点序列中提取原始文本块
+        
+        Args:
+            nodes: 节点序列
+            
+        Returns:
+            原始文本块列表
+        """
+        result: TextBlocks = []
         for node in nodes:
-            for unit in node["units"]:
+            for unit in node.get("units", []):
                 result.append(unit[1])
         return result
