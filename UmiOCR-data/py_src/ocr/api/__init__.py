@@ -121,7 +121,7 @@ def getApiOcr(apiKey, argd):
         
         if apiKey in ApiDict:
             try:
-                return ApiDict[apiKey](processed_argd)  # 实例化后返回
+                return ApiDict[apiKey](argd)  # 实例化后返回
             except Exception as e:
                 logger.error(f"生成api实例{apiKey}失败。", exc_info=True, stack_info=True)
                 return f"[Error] Failed to generate API instance {apiKey}: {e}"
