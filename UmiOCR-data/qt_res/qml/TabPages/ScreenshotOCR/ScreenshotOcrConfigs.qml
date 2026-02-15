@@ -18,6 +18,9 @@ Configs {
             "type": "group",
 
             "parser": qmlapp.globalConfigs.utilsDicts.getTbpuParser(),
+
+            // 文本后处理选项
+            "textPostProc": qmlapp.globalConfigs.utilsDicts.getTextPostProcOptions(),
         },
 
         "hotkey": {

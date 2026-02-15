@@ -1,19 +1,42 @@
 # 排版解析-单栏-无换行
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .tbpu_types import TextBlocks
+
 from .parser_single_line import SingleLine
 from .parser_tools.paragraph_parse import word_separator  # 上下句间隔符
 
 
 class SingleNone(SingleLine):
-    def __init__(self):
-        self.tbpuName = "排版解析-单栏-无换行"
+    """
+    单栏-无换行 排版解析器
+    
+    适用于单栏版面，根据语言智能判断是否需要空格。
+    继承自 SingleLine，在行识别基础上进行智能分隔。
+    """
+    
+    def __init__(self) -> None:
+        super().__init__()
+        self.tbpu_name: str = "排版解析-单栏-无换行"
 
-    def run(self, textBlocks):
-        textBlocks = super().run(textBlocks)
+    def run(self, text_blocks: TextBlocks) -> TextBlocks:
+        """
+        处理文本块列表
+        
+        Args:
+            text_blocks: 输入的文本块列表
+            
+        Returns:
+            处理后的文本块列表
+        """
+        text_blocks = super().run(text_blocks)
         # 找到换行符，更改为间隔符
-        for i in range(len(textBlocks) - 1):
-            if textBlocks[i]["end"] == "\n":
-                letter1 = textBlocks[i]["text"][-1]
-                letter2 = textBlocks[i + 1]["text"][0]
-                textBlocks[i]["end"] = word_separator(letter1, letter2)
-        return textBlocks
+        for i in range(len(text_blocks) - 1):
+            if text_blocks[i]["end"] == "\n":
+                letter1 = text_blocks[i]["text"][-1]
+                letter2 = text_blocks[i + 1]["text"][0]
+                text_blocks[i]["end"] = word_separator(letter1, letter2)
+        return text_blocks

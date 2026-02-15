@@ -1,15 +1,32 @@
 # 段落分析器
 # 对已经是一个列区块之内的文本块，判断其段落关系。
 
-from typing import Callable
+from __future__ import annotations
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 import unicodedata
 
+if TYPE_CHECKING:
+    from ..tbpu_types import TextBlocks, TextBlock, NormalizedBox
 
-# 传入前句尾字符和后句首字符，返回分隔符
-def word_separator(letter1, letter2):
+from .tbpu_config import TbpuConfig
+
+
+def word_separator(letter1: str, letter2: str) -> str:
+    """
+    传入前句尾字符和后句首字符，返回分隔符
+    
+    根据字符类型（CJK字符、标点符号等）判断是否需要添加空格分隔符。
+    
+    Args:
+        letter1: 前句尾字符
+        letter2: 后句首字符
+        
+    Returns:
+        分隔符字符串（空格或空字符串）
+    """
 
     # 判断Unicode字符是否属于中文、日文或韩文字符集
-    def is_cjk(character):
+    def is_cjk(character: str) -> bool:
         cjk_unicode_ranges = [
             (0x4E00, 0x9FFF),  # 中文
             (0x3040, 0x30FF),  # 日文
@@ -36,26 +53,44 @@ def word_separator(letter1, letter2):
     return " "
 
 
-TH = 1.2  # 行高用作对比的阈值
+# 行高用作对比的阈值
+TH: float = TbpuConfig.PARAGRAPH_THRESHOLD
 
 
 class ParagraphParse:
-    def __init__(self, get_info: Callable, set_end: Callable) -> None:
+    """
+    段落分析器
+    
+    对属于一个区块内的文本块列表进行段落分析，预测每个文本块结尾的分隔符。
+    """
+    
+    def __init__(
+        self, 
+        get_info: Callable[[TextBlock], Tuple[NormalizedBox, str]], 
+        set_end: Callable[[TextBlock, str], None]
+    ) -> None:
         """
-        :param get_info: 函数，传入单个文本块，
-                返回该文本块的信息元组： ( (x0, y0, x1, y1), "文本" )
-        :param set_end: 函数，传入单个文本块 和文本尾部的分隔符，该函数要将分隔符保存。
+        初始化段落分析器
+        
+        Args:
+            get_info: 函数，传入单个文本块，
+                    返回该文本块的信息元组： ( (x0, y0, x1, y1), "文本" )
+            set_end: 函数，传入单个文本块和文本尾部的分隔符，该函数要将分隔符保存
         """
-        self.get_info = get_info
-        self.set_end = set_end
+        self.get_info: Callable[[TextBlock], Tuple[NormalizedBox, str]] = get_info
+        self.set_end: Callable[[TextBlock, str], None] = set_end
 
     # ======================= 调用接口：对文本块列表进行结尾分隔符预测 =====================
-    def run(self, text_blocks: list):
+    
+    def run(self, text_blocks: TextBlocks) -> TextBlocks:
         """
         对属于一个区块内的文本块列表，进行段落分析，预测每个文本块结尾的分隔符。
 
-        :param text_blocks: 文本块对象列表
-        :return: 排序后的文本块列表
+        Args:
+            text_blocks: 文本块对象列表
+            
+        Returns:
+            处理后的文本块列表
         """
         # 封装块单元
         units = self._get_units(text_blocks, self.get_info)
@@ -64,9 +99,23 @@ class ParagraphParse:
         return text_blocks
 
     # ======================= 封装块单元列表 =====================
-    # 将原始文本块，封装为 ( (x0,y0,x2,y2), ("开头","结尾"), 原始 ) 。
-    def _get_units(self, text_blocks, get_info):
-        units = []
+    
+    def _get_units(
+        self, 
+        text_blocks: TextBlocks, 
+        get_info: Callable[[TextBlock], Tuple[NormalizedBox, str]]
+    ) -> List[Tuple[NormalizedBox, Tuple[str, str], TextBlock]]:
+        """
+        将原始文本块，封装为 ( (x0,y0,x2,y2), ("开头","结尾"), 原始 ) 。
+        
+        Args:
+            text_blocks: 文本块列表
+            get_info: 获取信息的函数
+            
+        Returns:
+            封装后的单元列表
+        """
+        units: List[Tuple[NormalizedBox, Tuple[str, str], TextBlock]] = []
         for tb in text_blocks:
             bbox, text = get_info(tb)
             units.append((bbox, (text[0], text[-1]), tb))
@@ -74,15 +123,22 @@ class ParagraphParse:
 
     # ======================= 分析 =====================
 
-    # 执行分析
-    def _parse(self, units):
+    def _parse(self, units: List[Tuple[NormalizedBox, Tuple[str, str], TextBlock]]) -> None:
+        """
+        执行段落分析
+        
+        Args:
+            units: 封装的文本块单元列表
+        """
         units.sort(key=lambda a: a[0][1])  # 确保从上到下有序
+        
         para_l, para_top, para_r, para_bottom = units[0][0]  # 当前段的左右
         para_line_h = para_bottom - para_top  # 当前段行高
-        para_line_s = None  # 当前段行间距
-        now_para = [units[0]]  # 当前段的块
-        paras = []  # 总的段
-        paras_line_space = []  # 总的段的行间距
+        para_line_s: Optional[float] = None  # 当前段行间距
+        now_para: List[Tuple[NormalizedBox, Tuple[str, str], TextBlock]] = [units[0]]  # 当前段的块
+        paras: List[List[Tuple[NormalizedBox, Tuple[str, str], TextBlock]]] = []  # 总的段
+        paras_line_space: List[Optional[float]] = []  # 总的段的行间距
+        
         # 取 左右相等为一个自然段的主体
         for i in range(1, len(units)):
             l, top, r, bottom = units[i][0]  # 当前块上下左右边缘
@@ -93,13 +149,13 @@ class ParagraphParse:
                 abs(para_l - l) <= para_line_h * TH
                 and abs(para_r - r) <= para_line_h * TH
                 # 行间距不大
-                and (para_line_s == None or ls < para_line_s + para_line_h * 0.5)
+                and (para_line_s is None or ls < para_line_s + para_line_h * TbpuConfig.LINE_SPACING_TOLERANCE)
             ):
                 # 更新数据
                 para_l = (para_l + l) / 2
                 para_r = (para_r + r) / 2
                 para_line_h = (para_line_h + h) / 2
-                para_line_s = ls if para_line_s == None else (para_line_s + ls) / 2
+                para_line_s = ls if para_line_s is None else (para_line_s + ls) / 2
                 # 添加到当前段
                 now_para.append(units[i])
             else:  # 非同一段，归档上一段，创建新一段
@@ -109,6 +165,7 @@ class ParagraphParse:
                 para_l, para_r, para_line_h = l, r, bottom - top
                 para_line_s = None
             para_bottom = bottom
+            
         # 归档最后一段
         paras.append(now_para)
         paras_line_space.append(para_line_s)
@@ -127,8 +184,8 @@ class ParagraphParse:
                     up_flag = up_dist <= up_h * TH and r <= up_r + up_h * TH
                     # 检查行间距
                     if (
-                        paras_line_space[i1 - 1] != None
-                        and top - up_bottom > paras_line_space[i1 - 1] + up_h * 0.5
+                        paras_line_space[i1 - 1] is not None
+                        and top - up_bottom > paras_line_space[i1 - 1] + up_h * TbpuConfig.LINE_SPACING_TOLERANCE
                     ):
                         up_flag = False
                 # 下段开头条件：右对齐/单行超出，左缩进
@@ -143,8 +200,8 @@ class ParagraphParse:
                             down_flag = down_r - down_h * TH < r
                     # 检查行间距
                     if (
-                        paras_line_space[i1 + 1] != None
-                        and down_top - bottom > paras_line_space[i1 + 1] + down_h * 0.5
+                        paras_line_space[i1 + 1] is not None
+                        and down_top - bottom > paras_line_space[i1 + 1] + down_h * TbpuConfig.LINE_SPACING_TOLERANCE
                     ):
                         down_flag = False
 
@@ -170,4 +227,3 @@ class ParagraphParse:
                 sep = word_separator(letter1, letter2)
                 self.set_end(para[i1][2], sep)
             self.set_end(para[-1][2], "\n")
-        return units

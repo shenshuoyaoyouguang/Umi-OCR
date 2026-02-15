@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
         gevent.monkey.patch_all()
 
-import base64, cgi, email.utils, functools, hmac, itertools, mimetypes, os, re, subprocess, sys, tempfile, threading, time, warnings, hashlib
+import base64, cgi, email.utils, functools, hmac, itertools, json, mimetypes, os, re, subprocess, sys, tempfile, threading, time, warnings, hashlib
 
 from datetime import date as datedate, datetime, timedelta
 from tempfile import TemporaryFile
@@ -2862,8 +2862,9 @@ def _lscmp(a, b):
 
 
 def cookie_encode(data, key):
-    """Encode and sign a pickle-able object. Return a (byte) string"""
-    msg = base64.b64encode(pickle.dumps(data, -1))
+    """Encode and sign a JSON-serializable object. Return a (byte) string"""
+    # 使用 JSON 代替 pickle 避免反序列化漏洞
+    msg = base64.b64encode(json.dumps(data, ensure_ascii=False).encode('utf-8'))
     sig = base64.b64encode(hmac.new(tob(key), msg, digestmod=hashlib.md5).digest())
     return tob("!") + sig + tob("?") + msg
 
@@ -2877,7 +2878,8 @@ def cookie_decode(data, key):
             sig[1:],
             base64.b64encode(hmac.new(tob(key), msg, digestmod=hashlib.md5).digest()),
         ):
-            return pickle.loads(base64.b64decode(msg))
+            # 使用 JSON 代替 pickle 避免反序列化漏洞
+            return json.loads(base64.b64decode(msg).decode('utf-8'))
     return None
 
 
