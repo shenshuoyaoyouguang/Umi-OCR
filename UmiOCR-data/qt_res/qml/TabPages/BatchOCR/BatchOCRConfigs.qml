@@ -29,6 +29,9 @@ Configs {
                 "type": "var",
                 "save": false,
             },
+
+            // 文本后处理选项
+            "textPostProc": qmlapp.globalConfigs.utilsDicts.getTextPostProcOptions(),
         },
 
         // 任务参数

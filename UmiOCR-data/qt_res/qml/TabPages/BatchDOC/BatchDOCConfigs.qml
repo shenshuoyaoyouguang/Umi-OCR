@@ -35,6 +35,9 @@ Configs {
                 "default": -1,
                 "save": false,
             },
+
+            // 文本后处理选项
+            "textPostProc": qmlapp.globalConfigs.utilsDicts.getTextPostProcOptions(),
         },
 
         // 文档参数

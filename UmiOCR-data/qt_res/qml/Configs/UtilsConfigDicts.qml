@@ -91,4 +91,74 @@ QtObject {
             },
         }
     }
+
+    // 文本后处理选项
+    function getTextPostProcOptions() {
+        return {
+            "title": qsTr("文本后处理"),
+            "type": "group",
+
+            "filterDigits": {
+                "title": qsTr("保留数字"),
+                "toolTip": qsTr("只提取文本中的数字字符，过滤其他内容"),
+                "default": false,
+                "type": "bool",
+            },
+
+            "convertWidth": {
+                "title": qsTr("半全角转换"),
+                "toolTip": qsTr("全角与半角字符之间的转换"),
+                "default": "none",
+                "optionsList": [
+                    ["none", qsTr("不转换")],
+                    ["full_to_half", qsTr("全角转半角")],
+                    ["half_to_full", qsTr("半角转全角")],
+                ],
+            },
+
+            "correctOcr": {
+                "title": qsTr("OCR纠错"),
+                "toolTip": qsTr("自动纠正OCR识别中的常见错误"),
+                "default": false,
+                "type": "bool",
+            },
+        }
+    }
+
+    // 构建文本后处理链配置
+    // 返回后端需要的链式配置格式
+    function buildTextPostProcChain(config) {
+        let chain = []
+        if(!config) return chain
+
+        if(config.filterDigits) {
+            chain.push({
+                "name": "filter_digits",
+                "params": {
+                    "keep_decimal": true,
+                    "keep_negative": true,
+                }
+            })
+        }
+
+        if(config.convertWidth && config.convertWidth !== "none") {
+            chain.push({
+                "name": "convert_width",
+                "params": {
+                    "mode": config.convertWidth
+                }
+            })
+        }
+
+        if(config.correctOcr) {
+            chain.push({
+                "name": "correct_ocr",
+                "params": {
+                    "enable_default": true
+                }
+            })
+        }
+
+        return chain
+    }
 }

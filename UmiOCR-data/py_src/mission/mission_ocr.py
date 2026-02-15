@@ -14,6 +14,7 @@ from umi_log import logger
 from .mission import Mission
 from ..ocr.tbpu import getParser, IgnoreArea
 from ..ocr.api import getApiOcr, getLocalOptions
+from ..ocr.text_postproc import create_chain, run_chain, FilterDigits, ConvertWidth, CorrectOcr
 from ..utils.utils import argdIntConvert
 
 # 合法文件后缀
@@ -52,6 +53,26 @@ class __MissionOcrClass(Mission):
         # 获取排版解析器对象
         if "tbpu.parser" in argd:
             msnInfo["tbpu"].append(getParser(argd["tbpu.parser"]))
+
+        # 文本后处理链
+        msnInfo["text_postproc"] = []
+        # 优先检查已构建的链配置
+        if "tbpu.textPostProc" in argd:
+            chain_config = argd["tbpu.textPostProc"]
+            if isinstance(chain_config, list) and chain_config:
+                msnInfo["text_postproc"] = create_chain(chain_config)
+        else:
+            # 从独立配置项构建链（兼容 QML 传递的配置）
+            text_postproc_config = {}
+            for key in argd:
+                if key.startswith("tbpu.textPostProc."):
+                    sub_key = key.replace("tbpu.textPostProc.", "")
+                    text_postproc_config[sub_key] = argd[key]
+
+            if text_postproc_config:
+                chain = _build_text_postproc_chain(text_postproc_config)
+                msnInfo["text_postproc"] = chain
+
         # 检查任务合法性
         for i in range(len(msnList) - 1, -1, -1):
             if "path" in msnList[i]:
@@ -111,6 +132,11 @@ class __MissionOcrClass(Mission):
                         res["code"] = 101
                         res["data"] = ""
                         break
+
+            # 执行文本后处理链
+            if msnInfo["text_postproc"]:
+                res["data"] = run_chain(res["data"], msnInfo["text_postproc"])
+
         return res
 
     # ========================= 【qml接口】 =========================
@@ -164,3 +190,38 @@ class __MissionOcrClass(Mission):
 
 # 全局 OCR任务管理器
 MissionOCR = __MissionOcrClass()
+
+
+# ===============================================
+# 辅助函数：构建文本后处理链
+# ===============================================
+
+def _build_text_postproc_chain(config: dict) -> list:
+    """
+    根据配置字典构建文本后处理链
+
+    Args:
+        config: 包含 textPostProc.* 配置的字典
+
+    Returns:
+        处理器实例列表
+    """
+    chain = []
+
+    # 保留数字
+    if config.get("filterDigits"):
+        chain.append(FilterDigits(
+            keep_decimal=True,
+            keep_negative=True,
+        ))
+
+    # 半全角转换
+    convert_width = config.get("convertWidth")
+    if convert_width and convert_width != "none":
+        chain.append(ConvertWidth(mode=convert_width))
+
+    # OCR纠错
+    if config.get("correctOcr"):
+        chain.append(CorrectOcr(enable_default=True))
+
+    return chain
