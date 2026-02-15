@@ -19,33 +19,33 @@ class ParserNone(Tbpu):
     
     def __init__(self) -> None:
         super().__init__()
-        self.tbpuName: str = "排版解析-不做处理"
+        self.tbpu_name: str = "排版解析-不做处理"
 
-    def run(self, textBlocks: TextBlocks) -> TextBlocks:
+    def run(self, text_blocks: TextBlocks) -> TextBlocks:
         """
         处理文本块列表
         
         Args:
-            textBlocks: 输入的文本块列表
+            text_blocks: 输入的文本块列表
             
         Returns:
             处理后的文本块列表（添加默认结尾分隔符）
         """
         try:
             # 边界检查
-            if not textBlocks:
+            if not text_blocks:
                 logger.debug("ParserNone: 输入为空列表，直接返回")
                 return []
             
-            if not isinstance(textBlocks, list):
-                logger.warning(f"ParserNone: 输入类型错误: {type(textBlocks)}，期望 list")
+            if not isinstance(text_blocks, list):
+                logger.warning(f"ParserNone: 输入类型错误: {type(text_blocks)}，期望 list")
                 return []
             
-            for tb in textBlocks:
+            for tb in text_blocks:
                 if tb and isinstance(tb, dict) and "end" not in tb:
                     tb["end"] = "\n"  # 默认结尾间隔符为换行
-            return textBlocks
+            return text_blocks
             
         except Exception as e:
             logger.exception(f"ParserNone 解析器处理失败: {e}")
-            return textBlocks if isinstance(textBlocks, list) else []
+            return text_blocks if isinstance(text_blocks, list) else []

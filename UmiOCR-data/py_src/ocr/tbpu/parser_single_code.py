@@ -7,6 +7,7 @@ from bisect import bisect_left
 if TYPE_CHECKING:
     from .tbpu_types import TextBlocks, TextBlock, Box
 
+from umi_log import logger
 from .parser_single_line import SingleLine
 from .parser_tools.line_preprocessing import line_preprocessing  # 行预处理
 
@@ -21,7 +22,7 @@ class SingleCode(SingleLine):
     
     def __init__(self) -> None:
         super().__init__()
-        self.tbpuName: str = "排版解析-单栏-代码段"
+        self.tbpu_name: str = "排版解析-单栏-代码段"
 
     def merge_line(self, line: TextBlocks) -> TextBlock:
         """
@@ -102,18 +103,47 @@ class SingleCode(SingleLine):
             tb["text"] = "  " * level + tb["text"]  # 补充空格
             b[0][0] = b[3][0] = xMin  # 左侧归零
 
-    def run(self, textBlocks: TextBlocks) -> TextBlocks:
+    def run(self, text_blocks: TextBlocks) -> TextBlocks:
         """
         处理文本块列表
         
         Args:
-            textBlocks: 输入的文本块列表
+            text_blocks: 输入的文本块列表
             
         Returns:
             处理后的文本块列表
         """
-        textBlocks = line_preprocessing(textBlocks)  # 预处理
-        lines = self.get_lines(textBlocks)  # 获取每一行
-        tbs = [self.merge_line(line) for line in lines]  # 合并所有行
-        self.indent(tbs)  # 为每行添加句首缩进
-        return tbs
+        try:
+            # 边界检查
+            if not text_blocks:
+                logger.debug("SingleCode: 输入为空列表，直接返回")
+                return []
+            
+            if not isinstance(text_blocks, list):
+                logger.warning(f"SingleCode: 输入类型错误: {type(text_blocks)}，期望 list")
+                return []
+            
+            text_blocks = line_preprocessing(text_blocks)  # 预处理
+            
+            if not text_blocks:
+                logger.debug("SingleCode: 预处理后为空")
+                return []
+            
+            lines = self.get_lines(text_blocks)  # 获取每一行
+            
+            if not lines:
+                logger.debug("SingleCode: 未识别到行")
+                return []
+            
+            tbs = [self.merge_line(line) for line in lines]  # 合并所有行
+            
+            if not tbs:
+                logger.debug("SingleCode: 合并后为空")
+                return []
+            
+            self.indent(tbs)  # 为每行添加句首缩进
+            return tbs
+            
+        except Exception as e:
+            logger.exception(f"SingleCode 解析器处理失败: {e}")
+            return text_blocks if isinstance(text_blocks, list) else []

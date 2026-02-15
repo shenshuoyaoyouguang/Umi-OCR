@@ -22,7 +22,7 @@ class MultiPara(Tbpu):
     
     def __init__(self) -> None:
         super().__init__()
-        self.tbpuName: str = "排版解析-多栏-自然段"
+        self.tbpu_name: str = "排版解析-多栏-自然段"
 
         # 间隙树对象
         self.gtree: GapTree = GapTree(lambda tb: tb["normalized_bbox"])
@@ -35,22 +35,41 @@ class MultiPara(Tbpu):
 
         self.pp: ParagraphParse = ParagraphParse(get_info, set_end)
 
-    def run(self, textBlocks: TextBlocks) -> TextBlocks:
+    def run(self, text_blocks: TextBlocks) -> TextBlocks:
         """
         处理文本块列表
         
         Args:
-            textBlocks: 输入的文本块列表
+            text_blocks: 输入的文本块列表
             
         Returns:
             处理后的文本块列表
         """
-        textBlocks = line_preprocessing(textBlocks)  # 预处理
-        textBlocks = self.gtree.sort(textBlocks)  # 构建间隙树
-        nodes = self.gtree.get_nodes_text_blocks()  # 获取树节点序列
-        # 对每个结点，进行自然段分析
-        for tbs in nodes:
-            self.pp.run(tbs)  # 预测结尾分隔符
-            for tb in tbs:
-                del tb["normalized_bbox"]
-        return textBlocks
+        try:
+            # 边界检查
+            if not text_blocks:
+                logger.debug("MultiPara: 输入为空列表，直接返回")
+                return []
+            
+            if not isinstance(text_blocks, list):
+                logger.warning(f"MultiPara: 输入类型错误: {type(text_blocks)}，期望 list")
+                return []
+            
+            text_blocks = line_preprocessing(text_blocks)  # 预处理
+            
+            if not text_blocks:
+                logger.debug("MultiPara: 预处理后为空")
+                return []
+            
+            text_blocks = self.gtree.sort(text_blocks)  # 构建间隙树
+            nodes = self.gtree.get_nodes_text_blocks()  # 获取树节点序列
+            # 对每个结点，进行自然段分析
+            for tbs in nodes:
+                self.pp.run(tbs)  # 预测结尾分隔符
+                for tb in tbs:
+                    del tb["normalized_bbox"]
+            return text_blocks
+            
+        except Exception as e:
+            logger.exception(f"MultiPara 解析器处理失败: {e}")
+            return text_blocks if isinstance(text_blocks, list) else []

@@ -20,23 +20,23 @@ class SingleNone(SingleLine):
     
     def __init__(self) -> None:
         super().__init__()
-        self.tbpuName: str = "排版解析-单栏-无换行"
+        self.tbpu_name: str = "排版解析-单栏-无换行"
 
-    def run(self, textBlocks: TextBlocks) -> TextBlocks:
+    def run(self, text_blocks: TextBlocks) -> TextBlocks:
         """
         处理文本块列表
         
         Args:
-            textBlocks: 输入的文本块列表
+            text_blocks: 输入的文本块列表
             
         Returns:
             处理后的文本块列表
         """
-        textBlocks = super().run(textBlocks)
+        text_blocks = super().run(text_blocks)
         # 找到换行符，更改为间隔符
-        for i in range(len(textBlocks) - 1):
-            if textBlocks[i]["end"] == "\n":
-                letter1 = textBlocks[i]["text"][-1]
-                letter2 = textBlocks[i + 1]["text"][0]
-                textBlocks[i]["end"] = word_separator(letter1, letter2)
-        return textBlocks
+        for i in range(len(text_blocks) - 1):
+            if text_blocks[i]["end"] == "\n":
+                letter1 = text_blocks[i]["text"][-1]
+                letter2 = text_blocks[i + 1]["text"][0]
+                text_blocks[i]["end"] = word_separator(letter1, letter2)
+        return text_blocks

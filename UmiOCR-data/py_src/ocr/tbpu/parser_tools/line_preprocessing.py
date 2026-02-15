@@ -11,9 +11,10 @@ if TYPE_CHECKING:
     from ..tbpu_types import TextBlocks, TextBlock, NormalizedBox, Box
 
 from umi_log import logger
+from .tbpu_config import TbpuConfig
 
 # 进行一些操作的最小角度阈值
-angle_threshold: float = 3
+angle_threshold: float = TbpuConfig.ANGLE_THRESHOLD_DEGREES
 angle_threshold_rad: float = radians(angle_threshold)
 
 

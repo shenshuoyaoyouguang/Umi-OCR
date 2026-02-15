@@ -7,10 +7,12 @@ from __future__ import annotations
 from .gap_tree import GapTree
 from .paragraph_parse import ParagraphParse, word_separator
 from .line_preprocessing import line_preprocessing
+from .tbpu_config import TbpuConfig
 
 __all__ = [
     "GapTree",
     "ParagraphParse", 
     "word_separator",
-    "linePreprocessing",
+    "line_preprocessing",
+    "TbpuConfig",
 ]

@@ -17,27 +17,34 @@ class IgnoreArea(Tbpu):
     用于排除页眉、页脚、页码等不需要识别的区域。
     """
     
-    def __init__(self, areaList: List[Box]) -> None:
+    def __init__(self, area_list: List[Box]) -> None:
         """
         初始化忽略区域处理器
         
         Args:
-            areaList: 忽略区域列表，每个区域是一个四边形包围盒
+            area_list: 忽略区域列表，每个区域是一个四边形包围盒
         """
         super().__init__()
-        self.tbpuName: str = "忽略区域"
-        self.areaList: List[Box] = areaList
+        self.tbpu_name: str = "忽略区域"
+        self.area_list: List[Box] = area_list
 
-    def run(self, textBlocks: TextBlocks) -> TextBlocks:
+    def run(self, text_blocks: TextBlocks) -> TextBlocks:
         """
         处理文本块列表，过滤掉位于忽略区域内的文本块
         
         Args:
-            textBlocks: 输入的文本块列表
+            text_blocks: 输入的文本块列表
             
         Returns:
             过滤后的文本块列表
         """
+        # 边界检查
+        if not text_blocks:
+            return []
+        
+        if not isinstance(text_blocks, list):
+            return []
+        
         # 返回是否矩形框 a 包含 b
         def isInBox(a: Box, b: Box) -> bool:
             return (
@@ -47,15 +54,15 @@ class IgnoreArea(Tbpu):
                 and a[2][1] >= b[2][1]
             )
 
-        newList: TextBlocks = []
-        for b in textBlocks:
+        new_list: TextBlocks = []
+        for b in text_blocks:
             flag = True  # True 为没有被忽略
             # 检测当前文块 b 是否在任何一个检测块 a 内
-            for a in self.areaList:
+            for a in self.area_list:
                 if isInBox(a, b["box"]):
                     flag = False  # 踩到任何一个块，GG
                     break
             if flag:  # 没有被忽略
-                newList.append(b)
+                new_list.append(b)
 
-        return newList
+        return new_list

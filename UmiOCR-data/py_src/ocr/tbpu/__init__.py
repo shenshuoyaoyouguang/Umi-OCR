@@ -592,7 +592,7 @@ if __name__ == "__main__":
     result = parser.run(test_blocks.copy())
     print(f"  输入文块数: {len(test_blocks)}")
     print(f"  输出文块数: {len(result)}")
-    print(f"  解析器名称: {parser.tbpuName}")
+    print(f"  解析器名称: {parser.tbpu_name}")
     assert len(result) == len(test_blocks)
     print("  ✓ 解析器功能正常")
     

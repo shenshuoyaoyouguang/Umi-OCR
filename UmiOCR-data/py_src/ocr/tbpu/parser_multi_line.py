@@ -22,47 +22,47 @@ class MultiLine(Tbpu):
     
     def __init__(self) -> None:
         super().__init__()
-        self.tbpuName: str = "排版解析-多栏-单行"
+        self.tbpu_name: str = "排版解析-多栏-单行"
 
         # 构建算法对象，指定包围盒的元素位置
         self.gtree: GapTree = GapTree(lambda tb: tb["normalized_bbox"])
 
-    def run(self, textBlocks: TextBlocks) -> TextBlocks:
+    def run(self, text_blocks: TextBlocks) -> TextBlocks:
         """
         处理文本块列表
         
         Args:
-            textBlocks: 输入的文本块列表
+            text_blocks: 输入的文本块列表
             
         Returns:
             处理后的文本块列表
         """
         try:
             # 边界检查
-            if not textBlocks:
+            if not text_blocks:
                 logger.debug("MultiLine: 输入为空列表，直接返回")
                 return []
             
-            if not isinstance(textBlocks, list):
-                logger.warning(f"MultiLine: 输入类型错误: {type(textBlocks)}，期望 list")
+            if not isinstance(text_blocks, list):
+                logger.warning(f"MultiLine: 输入类型错误: {type(text_blocks)}，期望 list")
                 return []
             
-            textBlocks = line_preprocessing(textBlocks)  # 预处理
+            text_blocks = line_preprocessing(text_blocks)  # 预处理
             
-            if not textBlocks:
+            if not text_blocks:
                 logger.debug("MultiLine: 预处理后为空")
                 return []
             
-            textBlocks = self.gtree.sort(textBlocks)  # 构建间隙树
+            text_blocks = self.gtree.sort(text_blocks)  # 构建间隙树
             
             # 补充行尾间隔符
-            for tb in textBlocks:
+            for tb in text_blocks:
                 if tb:
                     tb["end"] = "\n"
                     if "normalized_bbox" in tb:
                         del tb["normalized_bbox"]
-            return textBlocks
+            return text_blocks
             
         except Exception as e:
             logger.exception(f"MultiLine 解析器处理失败: {e}")
-            return textBlocks if isinstance(textBlocks, list) else []
+            return text_blocks if isinstance(text_blocks, list) else []

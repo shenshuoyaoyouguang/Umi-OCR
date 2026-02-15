@@ -32,6 +32,12 @@ Item {
                 + " `jpg, jpe, jpeg, jfif, png, webp, bmp, tif, tiff`",
         },
         {
+            key: "FormulaOCR",
+            needController: true,
+            title: qsTr("公式识别"),
+            intro: qsTr("# 公式识别\n\n截图或导入图片，识别数学公式，输出LaTeX代码。\n\n支持手写或印刷的数学公式。"),
+        },
+        {
             key: "BatchDOC",
             needController: true,
             title: qsTr("批量文档"),

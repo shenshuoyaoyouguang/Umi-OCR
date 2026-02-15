@@ -8,6 +8,8 @@ import unicodedata
 if TYPE_CHECKING:
     from ..tbpu_types import TextBlocks, TextBlock, NormalizedBox
 
+from .tbpu_config import TbpuConfig
+
 
 def word_separator(letter1: str, letter2: str) -> str:
     """
@@ -52,7 +54,7 @@ def word_separator(letter1: str, letter2: str) -> str:
 
 
 # 行高用作对比的阈值
-TH: float = 1.2
+TH: float = TbpuConfig.PARAGRAPH_THRESHOLD
 
 
 class ParagraphParse:
@@ -147,7 +149,7 @@ class ParagraphParse:
                 abs(para_l - l) <= para_line_h * TH
                 and abs(para_r - r) <= para_line_h * TH
                 # 行间距不大
-                and (para_line_s is None or ls < para_line_s + para_line_h * 0.5)
+                and (para_line_s is None or ls < para_line_s + para_line_h * TbpuConfig.LINE_SPACING_TOLERANCE)
             ):
                 # 更新数据
                 para_l = (para_l + l) / 2
@@ -183,7 +185,7 @@ class ParagraphParse:
                     # 检查行间距
                     if (
                         paras_line_space[i1 - 1] is not None
-                        and top - up_bottom > paras_line_space[i1 - 1] + up_h * 0.5
+                        and top - up_bottom > paras_line_space[i1 - 1] + up_h * TbpuConfig.LINE_SPACING_TOLERANCE
                     ):
                         up_flag = False
                 # 下段开头条件：右对齐/单行超出，左缩进
@@ -199,7 +201,7 @@ class ParagraphParse:
                     # 检查行间距
                     if (
                         paras_line_space[i1 + 1] is not None
-                        and down_top - bottom > paras_line_space[i1 + 1] + down_h * 0.5
+                        and down_top - bottom > paras_line_space[i1 + 1] + down_h * TbpuConfig.LINE_SPACING_TOLERANCE
                     ):
                         down_flag = False
 
