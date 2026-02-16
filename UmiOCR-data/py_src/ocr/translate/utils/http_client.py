@@ -17,7 +17,7 @@ from typing import Dict, Any, Optional, Tuple, Union
 
 from umi_log import logger
 
-# 默认超时秒数
+# 默认超时秒数（与 base.py 保持一致）
 DEFAULT_TIMEOUT = 10
 
 

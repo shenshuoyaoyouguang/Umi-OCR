@@ -25,12 +25,10 @@ from ..base import (
     TRANSLATE_ERROR_INVALID_TEXT,
     TRANSLATE_ERROR_TIMEOUT,
     TRANSLATE_ERROR_PARSE,
+    DEFAULT_TIMEOUT,
+    MAX_RESPONSE_PATH_DEPTH,
 )
 from ..utils.http_client import HttpClient, HttpResponse
-
-
-# 默认超时（秒）
-DEFAULT_TIMEOUT = 15
 
 
 class CustomTranslateEngine(TranslateEngine):
@@ -386,19 +384,31 @@ class CustomTranslateEngine(TranslateEngine):
     def _extract_translation(self, response: HttpResponse) -> Optional[str]:
         """
         从响应中提取翻译结果
-        
+
         Args:
             response: HTTP 响应
-            
+
         Returns:
             翻译结果，提取失败返回 None
         """
         path = self._config.get("response_path", "")
-        
+
         # 如果没有指定路径，尝试自动解析
         if not path:
             return None
-        
+
+        # 安全验证：检查路径深度和非法字符
+        keys = path.split(".")
+        if len(keys) > MAX_RESPONSE_PATH_DEPTH:
+            logger.warning(f"响应路径深度超过限制: {len(keys)} > {MAX_RESPONSE_PATH_DEPTH}")
+            return None
+
+        # 验证路径键的合法性（防止访问特殊属性）
+        for key in keys:
+            if not key or key.startswith("_") or key.startswith("__"):
+                logger.warning(f"响应路径包含非法键: {key}")
+                return None
+
         # 解析 JSON
         try:
             data = response.json()
@@ -406,11 +416,8 @@ class CustomTranslateEngine(TranslateEngine):
                 return None
         except Exception:
             return None
-        
+
         # 按路径提取
-        # 支持点分隔的路径，如 "data.translated_text"
-        keys = path.split(".")
-        
         for key in keys:
             if isinstance(data, dict):
                 data = data.get(key)
@@ -419,10 +426,10 @@ class CustomTranslateEngine(TranslateEngine):
                 data = data[idx] if idx < len(data) else None
             else:
                 return None
-            
+
             if data is None:
                 return None
-        
+
         # 转换为字符串
         if isinstance(data, str):
             return data

@@ -15,11 +15,8 @@ if TYPE_CHECKING:
 
 from umi_log import logger
 
-# 导入 TBPU 基类
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ocr.tbpu.tbpu import Tbpu
+# 导入 TBPU 基类（使用相对导入）
+from ..tbpu.tbpu import Tbpu
 
 # 导入翻译引擎
 from .base import (

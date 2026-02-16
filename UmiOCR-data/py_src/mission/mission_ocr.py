@@ -73,6 +73,26 @@ class __MissionOcrClass(Mission):
                 chain = _build_text_postproc_chain(text_postproc_config)
                 msnInfo["text_postproc"] = chain
 
+        # 翻译处理
+        if argd.get("tbpu.translate.enabled"):
+            try:
+                from ..ocr.translate import TranslateTbpu
+                translator = TranslateTbpu()
+                translator.configure({
+                    "translate.engine": argd.get("tbpu.translate.engine", "tencent"),
+                    "translate.target_lang": argd.get("tbpu.translate.target_lang", "en"),
+                    "translate.source_lang": argd.get("tbpu.translate.source_lang", "auto"),
+                    "translate.tencent.secret_id": argd.get("tbpu.translate.tencent_secret_id", ""),
+                    "translate.tencent.secret_key": argd.get("tbpu.translate.tencent_secret_key", ""),
+                    "translate.custom.url": argd.get("tbpu.translate.custom_url", ""),
+                    "translate.custom.api_key": argd.get("tbpu.translate.custom_api_key", ""),
+                })
+                msnInfo["tbpu"].append(translator)
+            except ImportError as e:
+                logger.warning(f"翻译模块导入失败: {e}")
+            except Exception as e:
+                logger.error(f"翻译配置失败: {e}", exc_info=True)
+
         # 检查任务合法性
         for i in range(len(msnList) - 1, -1, -1):
             if "path" in msnList[i]:

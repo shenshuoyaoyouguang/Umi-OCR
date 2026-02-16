@@ -21,6 +21,9 @@ Configs {
 
             // 文本后处理选项
             "textPostProc": qmlapp.globalConfigs.utilsDicts.getTextPostProcOptions(),
+
+            // 在线翻译选项
+            "translate": qmlapp.globalConfigs.utilsDicts.getTranslateOptions(),
         },
 
         "hotkey": {

@@ -9,8 +9,9 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Type
 from dataclasses import dataclass
+import threading
 
 
 # ===============================================
@@ -26,6 +27,17 @@ TRANSLATE_ERROR_INVALID_TEXT = 205  # 文本无效（空文本等）
 TRANSLATE_ERROR_TIMEOUT = 206     # 请求超时
 TRANSLATE_ERROR_PARSE = 207       # 响应解析失败
 TRANSLATE_ERROR_UNKNOWN = 299     # 未知错误
+
+
+# ===============================================
+# 常量定义
+# ===============================================
+
+# 默认请求超时（秒）
+DEFAULT_TIMEOUT = 10
+
+# 响应路径最大深度（安全限制）
+MAX_RESPONSE_PATH_DEPTH = 10
 
 
 # ===============================================
@@ -188,58 +200,63 @@ class TranslateEngine(ABC):
 class EngineRegistry:
     """
     翻译引擎注册表
-    
+
     管理所有可用的翻译引擎，支持动态注册和获取。
+    线程安全实现。
     """
-    
-    _engines: Dict[str, type] = {}
-    
+
+    _engines: Dict[str, Type[TranslateEngine]] = {}
+    _lock: threading.Lock = threading.Lock()
+
     @classmethod
-    def register(cls, engine_class: type) -> None:
+    def register(cls, engine_class: Type[TranslateEngine]) -> None:
         """
         注册引擎类
-        
+
         Args:
             engine_class: 翻译引擎类（必须继承 TranslateEngine）
         """
         if not issubclass(engine_class, TranslateEngine):
             raise TypeError(f"{engine_class} 必须继承 TranslateEngine")
-        
-        # 创建临时实例获取名称
-        instance = engine_class()
-        cls._engines[instance.name] = engine_class
-    
+
+        with cls._lock:
+            # 创建临时实例获取名称
+            instance = engine_class()
+            cls._engines[instance.name] = engine_class
+
     @classmethod
-    def get(cls, name: str) -> Optional[type]:
+    def get(cls, name: str) -> Optional[Type[TranslateEngine]]:
         """
         获取引擎类
-        
+
         Args:
             name: 引擎名称标识
-            
+
         Returns:
             引擎类，不存在返回 None
         """
-        return cls._engines.get(name)
-    
+        with cls._lock:
+            return cls._engines.get(name)
+
     @classmethod
-    def get_all(cls) -> Dict[str, type]:
+    def get_all(cls) -> Dict[str, Type[TranslateEngine]]:
         """
         获取所有已注册的引擎类
-        
+
         Returns:
             引擎名称到引擎类的映射
         """
-        return cls._engines.copy()
-    
+        with cls._lock:
+            return cls._engines.copy()
+
     @classmethod
     def create_instance(cls, name: str) -> Optional[TranslateEngine]:
         """
         创建引擎实例
-        
+
         Args:
             name: 引擎名称标识
-            
+
         Returns:
             引擎实例，不存在返回 None
         """
@@ -247,3 +264,20 @@ class EngineRegistry:
         if engine_class:
             return engine_class()
         return None
+
+    @classmethod
+    def unregister(cls, name: str) -> bool:
+        """
+        注销引擎类
+
+        Args:
+            name: 引擎名称标识
+
+        Returns:
+            是否成功注销
+        """
+        with cls._lock:
+            if name in cls._engines:
+                del cls._engines[name]
+                return True
+            return False

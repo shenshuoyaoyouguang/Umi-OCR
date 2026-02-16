@@ -161,4 +161,86 @@ QtObject {
 
         return chain
     }
+
+    // 在线翻译配置选项
+    function getTranslateOptions() {
+        return {
+            "title": qsTr("在线翻译"),
+            "type": "group",
+
+            "enabled": {
+                "title": qsTr("启用翻译"),
+                "toolTip": qsTr("将OCR识别结果翻译为指定语言"),
+                "default": false,
+            },
+
+            "engine": {
+                "title": qsTr("翻译引擎"),
+                "default": "tencent",
+                "optionsList": [
+                    ["tencent", qsTr("腾讯翻译君")],
+                    ["custom", qsTr("自定义API")],
+                ],
+            },
+
+            "target_lang": {
+                "title": qsTr("目标语言"),
+                "default": "en",
+                "optionsList": [
+                    ["en", qsTr("英语")],
+                    ["zh", qsTr("中文")],
+                    ["ja", qsTr("日语")],
+                    ["ko", qsTr("韩语")],
+                    ["fr", qsTr("法语")],
+                    ["de", qsTr("德语")],
+                    ["es", qsTr("西班牙语")],
+                    ["ru", qsTr("俄语")],
+                    ["pt", qsTr("葡萄牙语")],
+                    ["vi", qsTr("越南语")],
+                    ["th", qsTr("泰语")],
+                ],
+            },
+
+            "source_lang": {
+                "title": qsTr("源语言"),
+                "toolTip": qsTr("auto为自动检测"),
+                "default": "auto",
+                "optionsList": [
+                    ["auto", qsTr("自动检测")],
+                    ["zh", qsTr("中文")],
+                    ["en", qsTr("英语")],
+                    ["ja", qsTr("日语")],
+                    ["ko", qsTr("韩语")],
+                ],
+            },
+
+            "tencent_secret_id": {
+                "title": qsTr("腾讯云 SecretId"),
+                "toolTip": qsTr("在腾讯云控制台获取"),
+                "default": "",
+                "advanced": true,
+            },
+
+            "tencent_secret_key": {
+                "title": qsTr("腾讯云 SecretKey"),
+                "toolTip": qsTr("在腾讯云控制台获取"),
+                "default": "",
+                "advanced": true,
+            },
+
+            "custom_url": {
+                "title": qsTr("自定义API地址"),
+                "toolTip": qsTr("自定义翻译API的URL地址"),
+                "default": "",
+                "advanced": true,
+            },
+
+            "custom_api_key": {
+                "title": qsTr("自定义API密钥"),
+                "toolTip": qsTr("自定义API的密钥"),
+                "default": "",
+                "advanced": true,
+            },
+        }
+    }
 }

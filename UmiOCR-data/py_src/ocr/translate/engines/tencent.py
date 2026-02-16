@@ -25,6 +25,7 @@ from ..base import (
     TRANSLATE_ERROR_TIMEOUT,
     TRANSLATE_ERROR_PARSE,
     TRANSLATE_ERROR_UNKNOWN,
+    DEFAULT_TIMEOUT,
 )
 from ..utils.http_client import HttpClient, HttpResponse
 from ..utils.signature import TencentSigner
@@ -37,9 +38,6 @@ TENCENT_SERVICE = "tmt"
 TENCENT_ACTION = "TextTranslate"
 TENCENT_VERSION = "2018-03-21"
 TENCENT_REGION = "ap-beijing"
-
-# 默认超时（秒）
-DEFAULT_TIMEOUT = 10
 
 
 class TencentTranslateEngine(TranslateEngine):
